@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cert-pem-template-config
+  namespace: default
+data:
+  cert-pem-template.ctmpl: |
+    {{- with secret "test2/data/new" -}}
+    {{ .Data.data.cert }}
+    {{- end -}}

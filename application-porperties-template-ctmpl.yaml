@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: application-prop-template-config
+data:
+  application-prop-template.ctmpl: |
+    server:
+      port: 8087
+      ssl:
+        key-store: /app/cert/cc.pfx
+        key-store-password: p0lo9ki8
+        key-store-type: PKCS12
+        key-alias: 1
+        key-password: p0lo9ki8
+        protocol: TLS
+        enabled-protocols: "TLSv1.2,TLSv1.1,TLSv1"
+        enabled: true
+    camunda.bpm.admin-user:
+      id: admin
+      password: admin
+    feign:
+      client:
+        config:
+          default:
+            connectTimeout: 600000
+            readTimeout: 1000000
+    spring:
+      datasource:
+        {{- with secret "test2/data/new" }}
+        url: jdbc:postgresql://{{ .Data.data.dbhost }}:5432/{{ .Data.data.database }}
+        username: {{ .Data.data.user }}
+        password: {{ .Data.data.password }}
+        driverClassName: org.postgresql.Driver
+        hikari:
+          minimumIdle: 5
+          maximumPoolSize: 20
+      jpa:
+        show-sql: true
+        generate-ddl: true
+        hibernate:
+          ddl-auto: none
+      main:
+        allow-circular-references: true
+    # Swagger Configuration
+    spring.mvc.pathmatch.matching-strategy: ANT_PATH_MATCHER
+    api:
+      camunda: 
+        base.url: https://camunda-cc.cloudsmartz.com/engine-rest
+        context.url: {{ .Data.data.ttl }}
+        {{ end }}
+      catalog:
+        base.url: https://gateway-cc.cloudsmartz.com/catalog/1.0.0
+      price:
+        gnx:
+          base.url: https://gnxworker-cc.cloudsmartz.com/api/v1
+        connectbase:
+          base.url: https://connectbase-cc.cloudsmartz.com/api/v1  
+    logging:
+      file:
+        name: /var/log/camunda_stdout.log
+      pattern:
+        console: "Camunda %d{YYYY-MM-ddTHH:mm:ss,UTC} [%thread] %-5level %logger : %msg%n"
+        file: "Camunda %d{YYYY-MM-ddTHH:mm:ss,UTC} [%thread] %-5level %logger : %msg%n"
+      level:
+        com.camunda.*: INFO

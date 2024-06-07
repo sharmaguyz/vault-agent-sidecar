@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-java-camunda
+  labels:
+    app: ms-java-camunda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ms-java-camunda
+  template:
+    metadata:
+      labels:
+        app: ms-java-camunda
+    spec:
+      serviceAccountName: vault-auth
+      containers:
+        - name: vault-agent
+          image: vault:1.13.3
+          volumeMounts:
+            - name: application-prop-template
+              mountPath: /etc/vault/templates
+            - name: cert-pem-template
+              mountPath: /etc/vault/templates1
+            - name: key-pem-template
+              mountPath: /etc/vault/templates2
+            - name: secrets
+              mountPath: /etc/secrets
+            - name: vault-agent-config
+              mountPath: /etc/vault-agent
+          command: ["vault", "agent", "-config=/etc/vault-agent/vault-agent-config.hcl"]
+        - name: ms-java-camunda
+          image: harbor-registry.cloudsmartz.com/base-images/camund
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              mkdir -p /BOOT-INF/classes;
+              mkdir -p /app/cert;
+              ls -lrth /etc/secrets;
+              cat /etc/secrets/application.yaml;
+              cat /etc/secrets/cert.pem;
+              cat /etc/secrets/key.pem;
+              openssl pkcs12 -export -out /app/cert/cc.pfx -inkey /etc/secrets/key.pem -in /etc/secrets/cert.pem -passout pass:p0lo9ki8;
+              cp /etc/secrets/application.yaml /BOOT-INF/classes;
+              jar -uf /app/cc-ms-java-camunda-1.0.0.jar /BOOT-INF/classes/application.yaml;
+              java -jar /app/cc-ms-java-camunda-1.0.0.jar;
+          ports:
+          - containerPort: 8087
+            protocol: TCP
+          volumeMounts:
+            - name: application-prop-template
+              mountPath: /etc/vault/templates
+            - name: cert-pem-template
+              mountPath: /etc/vault/templates1
+            - name: key-pem-template
+              mountPath: /etc/vault/templates2
+            - name: secrets
+              mountPath: /etc/secrets
+            - name: filebeat-logs
+              mountPath: /var/log
+        - name: filebeat-sidecar
+          image: docker.elastic.co/beats/filebeat:7.5.0
+          volumeMounts:
+            - name: filebeat-logs
+              mountPath: /var/log
+            - name: filebeat-config
+              mountPath: /usr/share/filebeat/filebeat.yml
+              subPath: filebeat.yml
+      volumes:
+        - name: application-prop-template
+          configMap:
+            name: application-prop-template-config
+            items:
+              - key: application-prop-template.ctmpl
+                path: application-prop-template.ctmpl
+        - name: cert-pem-template
+          configMap:
+            name: cert-pem-template-config
+            items:
+              - key: cert-pem-template.ctmpl
+                path: cert-pem-template.ctmpl
+        - name: key-pem-template
+          configMap:
+            name: key-pem-template-config
+            items:
+              - key: key-pem-template.ctmpl
+                path: key-pem-template.ctmpl
+        - name: secrets
+          emptyDir: {}
+        - name: vault-agent-config
+          configMap:
+            name: vault-agent-config
+        - name: filebeat-logs
+          emptyDir: {}
+        - name: filebeat-config
+          configMap:
+            name: filebeat-sidecar-cc-camunda
+            items:
+              - key: filebeat.yml
+                path: filebeat.yml
+      imagePullSecrets:
+        - name: my-secret-docker-pass

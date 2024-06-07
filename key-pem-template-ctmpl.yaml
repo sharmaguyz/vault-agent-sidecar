@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: key-pem-template-config
+  namespace: default
+data:
+  key-pem-template.ctmpl: |
+    {{- with secret "test2/data/new" -}}
+    {{ .Data.data.key }}
+    {{- end -}}

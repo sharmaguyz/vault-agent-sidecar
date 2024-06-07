@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-agent-config
+data:
+  vault-agent-config.hcl: |
+    pid_file = "/home/vault/pidfile"
+
+    auto_auth {
+      method "kubernetes" {
+        mount_path = "auth/kubernetes"
+        config = {
+          role = "example"
+        }
+      }
+
+      sink "file" {
+        config = {
+          path = "/home/vault/.vault-token"
+        }
+      }
+    }
+
+    listener "tcp" {
+      address     = "0.0.0.0:8200"
+      tls_disable = 1
+    }
+
+    vault {
+      address = "https://vault.cloudsmartz.com:8200"
+    }
+
+    cache {
+      use_auto_auth_token = true
+    }
+
+    template {
+      source = "/etc/vault/templates/application-prop-template.ctmpl"
+      destination = "/etc/secrets/application.yaml"
+      command = "cat /etc/secrets/application.yaml"
+    }
+
+    template {
+      source = "/etc/vault/templates1/cert-pem-template.ctmpl"
+      destination = "/etc/secrets/cert.pem"
+      command = "cat /etc/secrets/cert.pem"
+    }
+
+    template {
+      source = "/etc/vault/templates2/key-pem-template.ctmpl"
+      destination = "/etc/secrets/key.pem"
+      command = "cat /etc/secrets/key.pem"
+    }

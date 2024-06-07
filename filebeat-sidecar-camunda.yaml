@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: ms-java-camunda
+    component: filebeat
+  namespace: default
+  name: filebeat-sidecar-cc-camunda
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+      - type: log
+        paths:
+          - "/var/log/*.log"
+        fields_under_root: true
+        tags: ENVIRONMENT-camunda
+        multiline:
+          pattern: '^\S.*[0-9]{1,4}-[0-9]{2}-[0-9]{2,4}'
+          negate: true
+          match: after
+          max_lines: 500
+        fields:
+          type: cc
+          app_id: ENVIRONMENT-camunda
+    output:
+      logstash:
+        hosts: ["ELKHOST"]
